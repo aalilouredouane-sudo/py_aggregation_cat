@@ -30,4 +30,9 @@ if __name__ == "__main__":
         units={"BEL": 1, "CHE": 1, "DEU": 1, "ESP": 1, "FRA": 1,
                "IRL": 1, "ITA": 1, "MEX": 1, "UK": 1, "XL": 1000},
         is_xl_pool_format=False,  # True si tous les périls XL sont déjà au format pool
+        group=False,  # True : ajoute Gross_MM_reconciliation_Group.xlsx (somme des entités en euros)
+        # taux de change vers l'euro par entité (utilisés seulement si group=True)
+        fx_rates={"BEL": 1, "CHE": 1.05440742, "DEU": 1, "ESP": 1, "FRA": 1,  # Septembre 26
+                  "IRL": 1, "ITA": 1, "MEX": 0.04893397, "UK": 1.16959064, "XL": 0.88039794},
+        # Décembre 25 : CHE 1.07469103, MEX 0.04735734, UK 1.14527859, XL 0.85146239
     ).run()
