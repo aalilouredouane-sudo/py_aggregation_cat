@@ -4,9 +4,10 @@ RANK = N_YEARS // RETURN_PERIOD  # 250 : rang de l'AEP/OEP 200 ans (sort(..., de
 
 POOL_TAG = "pool_property"
 CATFILE_PATTERN = r".csv"  # motif regex de list.files(pattern = ".csv") en R
-NON_LOB_COLS = ("year", "eventid", "model_id", "modelid")
+NON_LOB_COLS = ("year", "eventid", "event id", "model_id", "modelid")
 
 TOTAL_LABEL = "Total"
+GROUP_LABEL = "Group"
 ALL_LABEL = "All"
 XL_ENTITY = "XL"
 NO_POOL_FILE = "NO POOL FILE"  # Checkpool d'un risque sans pool file (et valeur initiale)
