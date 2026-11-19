@@ -74,6 +74,7 @@ py_aggregation_cat/
    | `is_xl_pool_format` | `True` if all XL perils are already in pool format. The XL entity is then excluded from the computation. |
    | `group` | `True` to also produce the Group view. |
    | `fx_rates` | Exchange rates to euro per entity. Required for every processed entity when `group=True`. |
+   | `by_lob` | `True` to also produce the summaries per LoB (see below). Existing outputs are unchanged. |
 
 3. **Run the computation**: `python main.py`.
 4. **Collect the outputs** in `output_dir`:
@@ -85,6 +86,10 @@ py_aggregation_cat/
    | `All_entities_summary.csv` | Concatenation of the `<entity>_summary.csv` files. |
    | `summary_all_subrisks.csv` | Metrics for each catfile, each segment and each segment merge (`All`). |
    | `Gross_MM_reconciliation_Group.xlsx` | Only if `group=True`. Same format as the entity files, with the strips of all entities in euros. |
+   | `<entity>_summary_by_lob.csv` | Only if `by_lob=True`. Columns `Entity`, `risk`, `LoB`, mean, AEP200, STEC, OEP200: one row per (risk, LoB) and the risk `Total`, then a `Total` block (all risks) per LoB and in total. |
+   | `All_entities_summary_by_lob.csv` | Only if `by_lob=True`. Concatenation of the `<entity>_summary_by_lob.csv` files. |
+
+   **Per-LoB summaries** are built from the catfiles only, because pool files have no LoB detail. For segmented risks, the same LoB is summed across segments for each event, and the runs are added together. The `Total` LoB uses the event total, so its OEP200 is the largest event across LoBs. As a result, the risk `Total` of the per-LoB file equals the main summary only for risks whose reported figures come from the catfiles (no pool file, or a pool file equal to the catfiles).
 
    The **`Checkpool`** column compares the pool file with the catfiles using R's `all.equal`. It is `TRUE` when they are equal. Otherwise it holds the first difference (`Column 'loss': Mean relative difference: …`), or `NO POOL FILE` / `No pool` when there is no pool file.
 
