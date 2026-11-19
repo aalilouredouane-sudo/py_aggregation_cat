@@ -25,8 +25,9 @@ from aggregation_cat import AggregationCatPipeline  # noqa: E402
 
 if __name__ == "__main__":
     AggregationCatPipeline(
-        folder=Path("C:/Users/B497NP/OneDrive - AXA/Desktop/4. CAT Man-Made/FY26/4. reinsurance/3. final catfiles/20261020 - processed - split"),
+        folder=Path("/Users/waelaalilou/Documents/work/axa/d_catfiles_test"),
         # entités à vérifier chaque année -> unité des catfiles
+        output_dir=Path("/Users/waelaalilou/Documents/work/axa/o_aggregation_cat"),
         units={"BEL": 1, "CHE": 1, "DEU": 1, "ESP": 1, "FRA": 1,
                "IRL": 1, "ITA": 1, "MEX": 1, "UK": 1, "XL": 1000},
         is_xl_pool_format=False,  # True si tous les périls XL sont déjà au format pool
