@@ -1,8 +1,7 @@
 """Compare fichier par fichier les sorties du script R et du script Python, et écrit un rapport Excel.
 
-Usage :
-    python tests/compare_outputs.py <dossier_sorties_R> <dossier_sorties_Python>
-        [--report rapport.xlsx] [--rtol 1e-9] [--atol 1e-6] [--max-details 1000]
+Usage : renseigner la section CONFIGURATION ci-dessous (dossiers R / Python, rapport, tolérances), puis
+    python tests/compare_outputs.py
 
 Fichiers comparés : tous les .csv et .xlsx présents dans l'un ou l'autre dossier (même nom).
 - CSV  : comparés comme une table.
@@ -10,10 +9,10 @@ Fichiers comparés : tous les .csv et .xlsx présents dans l'un ou l'autre dossi
 Pour chaque table : forme, noms de colonnes, puis cellule par cellule
 (numérique avec tolérance, texte à l'identique ; NA == NA).
 
-Rapport Excel (par défaut : rapport_comparaison_R_Python.xlsx à côté du dossier Python) :
+Rapport Excel (écrit dans REPORT_PATH) :
 - Synthese : paramètres du test + une ligne par fichier / feuille avec son statut
 - Colonnes : une ligne par colonne comparée (type, nb d'écarts, écarts max)
-- Ecarts   : le détail des cellules différentes (limité à --max-details par colonne)
+- Ecarts   : le détail des cellules différentes (limité à MAX_DETAILS par colonne)
 
 Code de sortie : 0 si tout est identique, 1 sinon.
 """
@@ -30,6 +29,15 @@ import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
+
+# ================================================================ CONFIGURATION
+R_DIR = Path("/Users/waelaalilou/Documents/work/axa/o_aggregation_cat_R")  # sorties du script R
+PY_DIR = Path("/Users/waelaalilou/Documents/work/axa/o_aggregation_cat_PY")  # sorties du script Python
+REPORT_PATH = Path("/Users/waelaalilou/Documents/work/axa/rapport_comparaison_R_Python.xlsx")  # rapport Excel
+RTOL = 1e-9  # tolérance relative (R = référence)
+ATOL = 1e-6  # tolérance absolue
+MAX_DETAILS = 1000  # nb max de cellules détaillées par colonne dans l'onglet Ecarts
+# ================================================================
 
 EXTENSIONS = {".csv", ".xlsx"}
 CONSOLE_EXAMPLES = 10  # nombre de cellules différentes affichées en console par colonne
@@ -336,7 +344,7 @@ def write_report(path: Path, results: list[TableResult], args: argparse.Namespac
     if truncated:
         note = len(rows) + 3
         ws.cell(note, 1, f"Détail limité à {args.max_details} cellules par colonne "
-                         f"(--max-details) ; colonnes tronquées :").font = Font(italic=True)
+                         f"(MAX_DETAILS) ; colonnes tronquées :").font = Font(italic=True)
         for k, (r, c) in enumerate(truncated, 1):
             ws.cell(note + k, 1, f"{r.file} / {r.sheet} / {c.name} : {c.n_diff} écarts au total")
     _autosize(ws)
@@ -351,19 +359,13 @@ def list_outputs(folder: Path) -> dict[str, Path]:
             if p.is_file() and p.suffix.lower() in EXTENSIONS and not p.name.startswith("~$")}
 
 
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("r_dir", type=Path, help="dossier des sorties R")
-    parser.add_argument("py_dir", type=Path, help="dossier des sorties Python")
-    parser.add_argument("--report", type=Path, default=None,
-                        help="chemin du rapport Excel (défaut : rapport_comparaison_R_Python.xlsx "
-                             "dans le dossier parent du dossier Python)")
-    parser.add_argument("--rtol", type=float, default=1e-9, help="tolérance relative (défaut 1e-9)")
-    parser.add_argument("--atol", type=float, default=1e-6, help="tolérance absolue (défaut 1e-6)")
-    parser.add_argument("--max-details", type=int, default=1000,
-                        help="nb max de cellules détaillées par colonne dans l'onglet Ecarts (défaut 1000)")
-    args = parser.parse_args(argv)
-    report = args.report or args.py_dir.resolve().parent / "rapport_comparaison_R_Python.xlsx"
+def main(r_dir: Path = R_DIR, py_dir: Path = PY_DIR, report: Path = REPORT_PATH,
+         rtol: float = RTOL, atol: float = ATOL, max_details: int = MAX_DETAILS) -> int:
+    for label, folder in (("R", r_dir), ("Python", py_dir)):
+        if not folder.is_dir():
+            print(f"Dossier des sorties {label} introuvable : {folder}")
+            return 2
+    args = argparse.Namespace(r_dir=r_dir, py_dir=py_dir, rtol=rtol, atol=atol, max_details=max_details)
 
     r_files, py_files = list_outputs(args.r_dir), list_outputs(args.py_dir)
     results: list[TableResult] = []
