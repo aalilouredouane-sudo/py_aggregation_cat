@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .config import NON_LOB_COLS, POOL_TAG
+from .config import NON_LOB_COLS, POOL_TAG, TOTAL_LABEL
 from .rcompat import group_sums, has_tag, list_files, row_sums
 
 _SEPARATORS = (",", ";", "\t", "|")
@@ -108,16 +108,58 @@ def _group_sum_max(values: pd.Series, keys) -> tuple[pd.Series, pd.Series]:
     return total, peak
 
 
-def yearly_strip(events: pd.DataFrame, unit: float, n_years: int, source: str = "") -> pd.DataFrame:
-    """get_yearly_catfile : par année, loss = somme et max_loss = plus gros événement, x unité."""
-    events = _check_years(events, n_years, source)
-    loss, max_loss = _group_sum_max(events["total"], events["year"])
+def _strip(values: pd.Series, years_col: pd.Series, unit: float, n_years: int) -> pd.DataFrame:
+    loss, max_loss = _group_sum_max(values, years_col)
     years = _years(n_years)
     return pd.DataFrame({
         "year": years.to_numpy(),
         "loss": loss.reindex(years, fill_value=0.0).to_numpy() * unit,
         "max_loss": max_loss.reindex(years, fill_value=0.0).to_numpy() * unit,
     })
+
+
+def yearly_strip(events: pd.DataFrame, unit: float, n_years: int, source: str = "") -> pd.DataFrame:
+    """get_yearly_catfile : par année, loss = somme et max_loss = plus gros événement, x unité."""
+    events = _check_years(events, n_years, source)
+    return _strip(events["total"], events["year"], unit, n_years)
+
+
+# ---------------------------------------------------------------- stripfiles par LoB (option by_lob)
+
+def lob_columns(events: pd.DataFrame) -> list[str]:
+    return [c for c in events.columns if c not in NON_LOB_COLS and c != "total"]
+
+
+def combine_segments_by_lob(segment_events: list[pd.DataFrame]) -> pd.DataFrame:
+    """Comme combine_segments, mais en gardant les LoB : une même LoB est sommée entre segments
+    pour un même (year, eventid) ; événement ou LoB absent d'un segment = 0."""
+    if len(segment_events) == 1:
+        return segment_events[0]
+    stacked = pd.concat([e.drop(columns="total") for e in segment_events],
+                        ignore_index=True, sort=False)
+    merged = stacked.groupby(["year", "eventid"], sort=True).sum().reset_index()
+    lobs = lob_columns(merged)
+    merged["total"] = row_sums(merged[lobs].to_numpy(dtype=float))
+    return merged
+
+
+def yearly_lob_strips(events: pd.DataFrame, unit: float, n_years: int,
+                      source: str = "") -> dict[str, pd.DataFrame]:
+    """Un strip (year, loss, max_loss) par LoB, plus TOTAL_LABEL calculé sur le total par événement
+    (son max_loss est donc le plus gros événement toutes LoB confondues)."""
+    events = _check_years(events, n_years, source)
+    strips = {lob: _strip(events[lob], events["year"], unit, n_years) for lob in lob_columns(events)}
+    strips[TOTAL_LABEL] = _strip(events["total"], events["year"], unit, n_years)
+    return strips
+
+
+def add_lob_strips(acc: dict[str, pd.DataFrame], other: dict[str, pd.DataFrame],
+                   n_years: int) -> dict[str, pd.DataFrame]:
+    """add_strip LoB par LoB ; une LoB absente d'un côté vaut 0."""
+    acc = dict(acc)
+    for lob, strip in other.items():
+        acc[lob] = add_strip(acc[lob] if lob in acc else zero_strip(n_years), strip)
+    return acc
 
 
 def pool_yearly_strip(pool_files: list[pd.DataFrame], unit: float, n_years: int,
